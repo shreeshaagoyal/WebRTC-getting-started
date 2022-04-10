@@ -101,9 +101,20 @@ async function gatherIceCandidates
     });
 }
 
+const servers = {
+    'iceServers': [
+        {'urls': 'stun:stun.l.google.com:19302'},
+        // {
+        //     'urls': 'turn:198.199.104.53:3478',
+        //     'username': 'hello',
+        //     'credential': 'sn0lxJKM1mkFebzEnKI',
+        //     'maxRateKbps': '8000'
+        // }
+    ]
+};
+
 async function initiatingPeer(fromChannel, toChannel) {
-    const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
-    const peerConnection = new RTCPeerConnection(configuration);
+    const peerConnection = new RTCPeerConnection(servers);
 
     let sendChannel = peerConnection.createDataChannel('sendDataChannel');
     let signallingChannel = new SignallingChannel(fromChannel, toChannel);
@@ -123,8 +134,7 @@ async function initiatingPeer(fromChannel, toChannel) {
 }
 
 async function receivingPeer(fromChannel, toChannel) {
-    const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
-    const peerConnection = new RTCPeerConnection(configuration);
+    const peerConnection = new RTCPeerConnection(servers);
 
     peerConnection.ondatachannel = event => {
         let channel = event.channel;
