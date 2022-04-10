@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# Basic send and receive
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11", "message": "hello"}' \
+    http://localhost:3000/send_message
+printf '\n'
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11"}' \
+    http://localhost:3000/receive_message
+printf '\n'
+
+# Multiple send and receives
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11", "message": "hello1"}' \
+    http://localhost:3000/send_message
+printf '\n'
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11", "message": "hello2"}' \
+    http://localhost:3000/send_message
+printf '\n'
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11", "message": "hello3"}' \
+    http://localhost:3000/send_message
+printf '\n'
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11"}' \
+    http://localhost:3000/receive_message
+printf '\n'
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11"}' \
+    http://localhost:3000/receive_message
+printf '\n'
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11"}' \
+    http://localhost:3000/receive_message
+printf '\n'
+
+# Receive and send
+# Hard to do in bash. Do it manually or write a better script
+

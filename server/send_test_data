@@ -1,0 +1,8 @@
+#!/bin/bash
+
+curl --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"channel":"11", "message": "hello"}' \
+    http://localhost:3000/send_message
+printf '\n'
+
