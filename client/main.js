@@ -63,9 +63,16 @@ const servers = {
     ]
 };
 
-function establishConnection(fromChannel, toChannel, isInitiator) {
+function establishConnection
+(
+    fromChannel,
+    toChannel,
+    isInitiator,
+    cbSuccess,
+    cbError
+)
+{
     let signallingChannel = new SignallingChannel(fromChannel, toChannel);
-
     let dataChannel;
     const peerConnection = new RTCPeerConnection(servers);
     let descriptionReceived = false;
@@ -75,14 +82,12 @@ function establishConnection(fromChannel, toChannel, isInitiator) {
     if (isInitiator) {
         dataChannel = peerConnection.createDataChannel('sendDataChannel');
         dataChannel.onopen = () => {
-            dataChannel.send('Hello, world!!');
+            cbSuccess(dataChannel);
         };
     } else {
         peerConnection.ondatachannel = event => {
             dataChannel = event.channel;
-            dataChannel.onmessage = message => {
-                console.log('MESSAGE RECEIVED', message);
-            };
+            cbSuccess(dataChannel);
         };
     }
 
@@ -170,11 +175,19 @@ function establishConnection(fromChannel, toChannel, isInitiator) {
     }
 }
 
-async function initiatingPeer(fromChannel, toChannel) {
-    establishConnection(fromChannel, toChannel, true);
+function establishConnectionAsync(fromChannel, toChannel, isInitiator) {
+    return new Promise((resolve, reject) => {
+        establishConnection(fromChannel, toChannel, isInitiator, resolve, reject);
+    });
 }
 
-async function receivingPeer(fromChannel, toChannel) {
-    establishConnection(fromChannel, toChannel, false);
+async function initPeer(fromChannel, toChannel, isInitiator) {
+    let dataChannel = await establishConnectionAsync(fromChannel, toChannel,
+        isInitiator);
+    console.log('connection established');
+    dataChannel.send('Hello, world!!');
+    dataChannel.onmessage = message => {
+        console.log('MESSAGE RECEIVED', message);
+    };
 }
 
