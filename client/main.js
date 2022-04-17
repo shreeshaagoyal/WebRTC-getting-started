@@ -113,6 +113,79 @@ const servers = {
     ]
 };
 
+async function establishConnection(fromChannel, toChannel, isInitiator) {
+    let signallingChannel = new SignallingChannel(fromChannel, toChannel);
+
+    let currentState = 'init';
+    let dataChannel;
+    const peerConnection = new RTCPeerConnection(servers);
+
+    // The initiator creates a data channel and the receiver receives it
+    if (isInitiator) {
+        dataChannel = peerConnection.createDataChannel('sendDataChannel');
+        dataChannel.onopen = () => {
+            dataChannel.send('Hello, world!!');
+        };
+    } else {
+        peerConnection.ondatachannel = event => {
+            dataChannel = event.channel;
+            dataChannel.onmessage = message => {
+                console.log('MESSAGE RECEIVED', message);
+            };
+        };
+    }
+
+    // Listen for local ICE candidates on the local RTCPeerConnection
+    peerConnection.addEventListener('icecandidate', async event => {
+        console.log('icecandidate event generated');
+        if (event.candidate) {
+            await signallingChannel.sendMessage('ice', event.candidate);
+            console.log("sending ice candidate");
+        }
+    });
+
+    // Listen for connectionstatechange on the local RTCPeerConnection
+    peerConnection.addEventListener('connectionstatechange', _ => {
+        console.log(`connection state changed: ${peerConnection.connectionState}`);
+        if (peerConnection.connectionState === 'connected') {
+            // Peers connected!
+            console.log('peer connected!');
+        }
+    });
+
+    signallingChannel.addMessageReceiveCallback(async message => {
+        if (message.type == 'ice') {
+            try {
+                await peerConnection.addIceCandidate(message.body);
+                console.log("received ice candidate");
+            } catch (e) {
+                console.error('Error adding received ice candidate', e);
+            }
+        } else if (message.type == 'description') {
+            const remoteDesc = new RTCSessionDescription(message.body);
+            await peerConnection.setRemoteDescription(remoteDesc);
+            console.log('set remote description');
+
+            if (isReceivingPeer) {
+                let answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                console.log('set local description');
+
+                await signallingChannel.sendMessage('description', answer);
+                console.log('sent description');
+            }
+        }
+    });
+
+    while (currentState != 'done') {
+        console.log(`Current state: ${currentState}`);
+
+        if (currentState == 'init') {
+
+        }
+    }
+}
+
 async function initiatingPeer(fromChannel, toChannel) {
     const peerConnection = new RTCPeerConnection(servers);
 
