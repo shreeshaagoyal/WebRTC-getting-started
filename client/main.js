@@ -96,6 +96,7 @@ async function establishConnection
     } else {
         if (shareScreen) {
             peerConnection.ontrack = event => {
+                // TODO: What if we get multiple tracks for some reason?
                 console.log('stream received');
                 screenCaptureStream = event.streams[0];
                 cbSuccess(screenCaptureStream);
