@@ -63,10 +63,11 @@ const servers = {
     ]
 };
 
-function establishConnection
+async function establishConnection
 (
     fromChannel,
     toChannel,
+    shareScreen,
     isInitiator,
     cbSuccess,
     cbError
@@ -74,21 +75,37 @@ function establishConnection
 {
     let signallingChannel = new SignallingChannel(fromChannel, toChannel);
     let dataChannel;
+    let screenCaptureStream;
     const peerConnection = new RTCPeerConnection(servers);
     let descriptionReceived = false;
     let iceCandidatesQueue = [];
 
     // The initiator creates a data channel and the receiver receives it
     if (isInitiator) {
-        dataChannel = peerConnection.createDataChannel('sendDataChannel');
-        dataChannel.onopen = () => {
-            cbSuccess(dataChannel);
-        };
+        if (shareScreen) {
+            screenCaptureStream = await getScreenCaptureStream();
+            for (const track of screenCaptureStream.getTracks()) {
+                peerConnection.addTrack(track, screenCaptureStream);
+            }
+        } else {
+            dataChannel = peerConnection.createDataChannel('sendDataChannel');
+            dataChannel.onopen = () => {
+                cbSuccess(dataChannel);
+            };
+        }
     } else {
-        peerConnection.ondatachannel = event => {
-            dataChannel = event.channel;
-            cbSuccess(dataChannel);
-        };
+        if (shareScreen) {
+            peerConnection.ontrack = event => {
+                console.log('stream received');
+                screenCaptureStream = event.streams[0];
+                cbSuccess(screenCaptureStream);
+            };
+        } else {
+            peerConnection.ondatachannel = event => {
+                dataChannel = event.channel;
+                cbSuccess(dataChannel);
+            };
+        }
     }
 
     // Listen for local ICE candidates on the local RTCPeerConnection
@@ -106,6 +123,10 @@ function establishConnection
         if (peerConnection.connectionState === 'connected') {
             // Peers connected!
             console.log('peer connected!');
+
+            if (isInitiator && shareScreen) {
+                cbSuccess(screenCaptureStream);
+            }
         }
     });
 
@@ -164,20 +185,26 @@ function establishConnection
     });
 
     if (isInitiator) {
-        (async () => {
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            console.log('set local description');
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        console.log('set local description');
 
-            await signallingChannel.sendMessage('description', offer);
-            console.log('sent description');
-        })();
+        await signallingChannel.sendMessage('description', offer);
+        console.log('sent description');
     }
 }
 
-function establishConnectionAsync(fromChannel, toChannel, isInitiator) {
+function establishConnectionAsync
+(
+    fromChannel,
+    toChannel,
+    shareScreen,
+    isInitiator
+)
+{
     return new Promise((resolve, reject) => {
-        establishConnection(fromChannel, toChannel, isInitiator, resolve, reject);
+        establishConnection(fromChannel, toChannel, shareScreen, isInitiator,
+            resolve, reject);
     });
 }
 
@@ -194,18 +221,19 @@ async function getScreenCaptureStream() {
     return stream;
 }
 
-async function screenCaptureTest() {
-    const stream = await getScreenCaptureStream();
-    document.getElementById('test_video').srcObject = stream;
-}
-
-async function initPeer(fromChannel, toChannel, isInitiator) {
-    let dataChannel = await establishConnectionAsync(fromChannel, toChannel,
-        isInitiator);
+async function initPeer(fromChannel, toChannel, shareScreen, isInitiator) {
+    let webRtcResource = await establishConnectionAsync(fromChannel, toChannel,
+        shareScreen, isInitiator);
     console.log('connection established');
-    dataChannel.send('Hello, world!!');
-    dataChannel.onmessage = message => {
-        console.log('MESSAGE RECEIVED', message);
-    };
+    if (shareScreen) {
+        const stream = webRtcResource;
+        document.getElementById('test_video').srcObject = stream;
+    } else {
+        const dataChannel = webRtcResource;
+        dataChannel.send('Hello, world!!');
+        dataChannel.onmessage = message => {
+            console.log('MESSAGE RECEIVED', message);
+        };
+    }
 }
 
