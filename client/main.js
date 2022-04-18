@@ -181,6 +181,24 @@ function establishConnectionAsync(fromChannel, toChannel, isInitiator) {
     });
 }
 
+async function getScreenCaptureStream() {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: {
+            autoGainControl: false,
+            echoCancellation: false,
+            googAutoGainControl: false,
+            noiseSuppression: false
+        }
+    });
+    return stream;
+}
+
+async function screenCaptureTest() {
+    const stream = await getScreenCaptureStream();
+    document.getElementById('test_video').srcObject = stream;
+}
+
 async function initPeer(fromChannel, toChannel, isInitiator) {
     let dataChannel = await establishConnectionAsync(fromChannel, toChannel,
         isInitiator);
